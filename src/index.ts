@@ -1,0 +1,5 @@
+export { createLogger } from './core/logger'
+export type { Logger, CreateLoggerOptions } from './core/logger'
+export { memoryStore } from './stores/memory-store'
+export type { MemoryStoreOptions } from './stores/memory-store'
+export type { Level, LogEntry, QueryOpts, QueryResult, LogStore } from './core/types'

@@ -1,0 +1,19 @@
+# Superpowers planning docs — never commit
+docs/superpowers/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs (fileStore output)
+.logs/
+*.log
+
+# Env
+.env
+.env*.local
