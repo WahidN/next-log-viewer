@@ -73,6 +73,43 @@ Logs still print to your terminal as usual.
 The viewer probes its session once on load and only starts polling **after** you unlock it,
 so an unauthenticated page never spams the API with `401`s — it just shows the unlock form.
 
+### Where you can log
+
+`log` is a plain server-side function: it appends to the store and prints to your terminal.
+It has no dependency on a request, `headers()`, or `cookies()`, so you can call it anywhere
+that runs on the server — **route handlers, Server Actions, and Server Components** — and
+every call writes to the same store the viewer reads.
+
+```ts
+// Server Action — app/actions.ts
+'use server'
+import { log } from '@/lib/log-viewer'
+
+export async function createPost(formData: FormData) {
+  log.info('creating post', { title: formData.get('title') })
+  // ...
+}
+```
+
+```tsx
+// Server Component — app/dashboard/page.tsx
+import { log } from '@/lib/log-viewer'
+
+export default async function Dashboard() {
+  log.info('rendering dashboard')  // fires when the component renders
+  return <div>…</div>
+}
+```
+
+Always import `log` from your shared `lib/log-viewer` module (don't call `createLogViewer`
+again) so every call lands in the one store the viewer polls.
+
+> **Server Component caveat:** logging in a Server Component is a *render-time* side effect.
+> If the segment is static or its render is cached, the log fires when Next.js renders it —
+> at build time, or once then served from cache — not on every request. For per-request
+> logging, log from a route handler or Server Action, or make the segment dynamic with
+> `export const dynamic = 'force-dynamic'`.
+
 ## Notes
 
 - Serverless (Vercel): the bundled `memoryStore`/`fileStore` are per-instance and
