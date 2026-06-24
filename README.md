@@ -115,5 +115,9 @@ again) so every call lands in the one store the viewer polls.
 - Serverless (Vercel): the bundled `memoryStore`/`fileStore` are per-instance and
   non-durable. Implement the `LogStore` interface against Redis/a database for shared,
   durable storage. The interface is `{ append(entry), query(opts) }`.
+- Edge runtime: `fileStore` uses `node:fs`, so it can't run on the Edge runtime
+  (`export const runtime = 'edge'`), which has no filesystem. The Node.js runtime — the
+  default everywhere, including Vercel's serverless functions — is fine. For Edge, back
+  the `LogStore` interface with a network service like Redis instead.
 - Transport is client polling (interval set by `intervalMs`, default 5s); robust across
   dev, servers, and serverless.
