@@ -5,14 +5,14 @@ A drop-in log viewer for Next.js server-side logs. Log through an explicit API; 
 ## Install
 
 ```bash
-npm install next-log-viewer
+npm install @wahidn/next-log-viewer
 ```
 
 ## Setup (3 files)
 
 ```ts
 // lib/log-viewer.ts — logger + handlers share ONE store, and one config object
-import { createLogViewer, memoryStore, fileStore } from 'next-log-viewer/server'
+import { createLogViewer, memoryStore, fileStore } from '@wahidn/next-log-viewer/server'
 
 export const { log, handlers, config } = createLogViewer({
   store: process.env.NODE_ENV === 'production'
@@ -37,7 +37,7 @@ export const { GET, POST } = handlers
 
 ```tsx
 // app/logs/page.tsx
-import { LogViewer } from 'next-log-viewer/ui'
+import { LogViewer } from '@wahidn/next-log-viewer/ui'
 import { config } from '@/lib/log-viewer'
 export default () => <LogViewer config={config} />
 ```

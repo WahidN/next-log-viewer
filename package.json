@@ -1,6 +1,13 @@
 {
-  "name": "next-log-viewer",
+  "name": "@wahidn/next-log-viewer",
   "version": "0.1.0",
+  "description": "A drop-in log viewer for Next.js server-side logs. Log through an explicit API; view them live in a protected in-app route.",
+  "keywords": ["nextjs", "logging", "logger", "log-viewer", "react", "server"],
+  "license": "MIT",
+  "author": "Wahid <wahid@linku.nl>",
+  "repository": { "type": "git", "url": "git+https://github.com/WahidN/next-log-viewer.git" },
+  "bugs": { "url": "https://github.com/WahidN/next-log-viewer/issues" },
+  "homepage": "https://github.com/WahidN/next-log-viewer#readme",
   "type": "module",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
@@ -8,11 +15,13 @@
     "./ui": { "types": "./dist/ui/index.d.ts", "import": "./dist/ui/index.js" }
   },
   "files": ["dist"],
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "tsup"
   },
   "peerDependencies": { "react": ">=18", "react-dom": ">=18" },
   "peerDependenciesMeta": { "react": { "optional": true }, "react-dom": { "optional": true } },
@@ -25,7 +34,7 @@
     "react": "18.3.0",
     "react-dom": "18.3.0",
     "tsup": "8.0.0",
-    "typescript": "5.4.0",
+    "typescript": "5.4.5",
     "vitest": "1.6.0"
   }
 }

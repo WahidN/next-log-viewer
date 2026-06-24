@@ -1,4 +1,4 @@
-import { createLogViewer, memoryStore } from 'next-log-viewer/server'
+import { createLogViewer, memoryStore } from '@wahidn/next-log-viewer/server'
 
 // Single source of truth: the logger and the viewer handlers must share ONE store.
 // We cache the instance on globalThis so Next.js dev hot-reloads don't recreate the
