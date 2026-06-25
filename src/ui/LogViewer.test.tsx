@@ -56,3 +56,23 @@ test('unlocking with the secret reveals the log stream', async () => {
   fireEvent.click(screen.getByRole('button', { name: /unlock/i }))
   await waitFor(() => expect(screen.getByText('after unlock')).toBeTruthy())
 })
+
+test('renders an http entry as a network row and expands request/response', async () => {
+  const httpEntry = {
+    id: '1', ts: 1, level: 'info', message: 'GET https://api.test/users → 200 (9ms)',
+    http: {
+      method: 'GET', url: 'https://api.test/users', status: 200, durationMs: 9,
+      request: { headers: { accept: 'application/json' } },
+      response: { headers: { 'content-type': 'application/json' }, body: { id: 7, name: 'Ada' } },
+    },
+  }
+  vi.stubGlobal('fetch', mockFetch({ authed: true, entries: [httpEntry], cursor: '1' }))
+  render(<LogViewer config={config} />)
+  await waitFor(() => expect(screen.getByText('https://api.test/users')).toBeTruthy())
+  expect(screen.getByText('GET')).toBeTruthy()
+  expect(screen.getByText('200')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /api\.test\/users/ }))
+  await waitFor(() => expect(screen.getByText(/"name": "Ada"/)).toBeTruthy())
+  expect(screen.getByText('Request')).toBeTruthy()
+  expect(screen.getByText('Response')).toBeTruthy()
+})

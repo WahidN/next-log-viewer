@@ -1,5 +1,17 @@
 export type Level = 'debug' | 'info' | 'warn' | 'error'
 
+export interface HttpCapture {
+  method: string
+  url: string
+  status?: number
+  statusText?: string
+  durationMs: number
+  request: { headers: Record<string, string>; body?: unknown }
+  response?: { headers: Record<string, string>; body?: unknown }
+  error?: { name: string; message: string }
+  truncated?: boolean
+}
+
 export interface LogEntry {
   id: string
   ts: number
@@ -7,6 +19,7 @@ export interface LogEntry {
   message: string
   data?: unknown
   error?: { name: string; message: string; stack?: string }
+  http?: HttpCapture
 }
 
 export interface QueryOpts {

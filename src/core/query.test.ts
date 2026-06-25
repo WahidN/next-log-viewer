@@ -39,3 +39,14 @@ test('limit caps the page size', () => {
   expect(r.entries.map((e) => e.id)).toEqual(['1', '2'])
   expect(r.cursor).toBe('2')
 })
+
+test('search matches the http payload (url and body)', () => {
+  const entries: LogEntry[] = [
+    { id: '5', ts: 5, level: 'info', message: 'GET → 200', http: {
+      method: 'GET', url: 'https://api.test/widgets', durationMs: 3,
+      request: { headers: {} }, response: { headers: {}, body: { sku: 'ABC-123' } },
+    } },
+  ]
+  expect(applyQuery(entries, { search: 'widgets' }).entries.map((e) => e.id)).toEqual(['5'])
+  expect(applyQuery(entries, { search: 'abc-123' }).entries.map((e) => e.id)).toEqual(['5'])
+})

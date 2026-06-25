@@ -1,4 +1,4 @@
-import { createLogViewer, memoryStore } from '@wahidn/next-log-viewer/server'
+import { createLogViewer, createLoggedFetch, memoryStore } from '@wahidn/next-log-viewer/server'
 
 // Single source of truth: the logger and the viewer handlers must share ONE store.
 // We cache the instance on globalThis so Next.js dev hot-reloads don't recreate the
@@ -22,3 +22,14 @@ export const { log, handlers, config } =
     basePath: '/api/logs',
     intervalMs: 5000,
   }))
+
+// A drop-in `fetch` replacement that records every server-side request/response
+// pair to the same store the viewer reads — your "network tab" for outbound
+// server calls. Sensitive headers (authorization/cookie/…) are redacted by
+// default; the redactBody hook below masks a `password` field before storage.
+export const loggedFetch = createLoggedFetch(log, {
+  redactBody: (body) =>
+    body && typeof body === 'object' && 'password' in body
+      ? { ...(body as Record<string, unknown>), password: '[redacted]' }
+      : body,
+})
