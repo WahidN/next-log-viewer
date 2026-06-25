@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import type { Level, LogEntry, ViewerConfig } from '../core/types'
+import type { HttpCapture, Level, LogEntry, ViewerConfig } from '../core/types'
 import { useLogStream, type StreamStatus } from './useLogStream'
 
 export interface LogViewerProps {
@@ -121,10 +121,13 @@ function StatusPill({ status, count }: { status: StreamStatus; count: number }) 
 
 function LogRow({ entry }: { entry: LogEntry }) {
   const [open, setOpen] = useState(false)
-  const hasDetail = entry.data !== undefined || entry.error !== undefined
-  const detail = entry.error
-    ? entry.error.stack ?? `${entry.error.name}: ${entry.error.message}`
-    : JSON.stringify(entry.data, null, 2)
+  const http = entry.http
+  const hasDetail = entry.data !== undefined || entry.error !== undefined || http !== undefined
+  const detail = http
+    ? undefined
+    : entry.error
+      ? entry.error.stack ?? `${entry.error.name}: ${entry.error.message}`
+      : JSON.stringify(entry.data, null, 2)
   return (
     <li className="nlv-row" data-level={entry.level}>
       <button
@@ -137,12 +140,76 @@ function LogRow({ entry }: { entry: LogEntry }) {
         <time className="nlv-time" dateTime={new Date(entry.ts).toISOString()}>
           {new Date(entry.ts).toISOString().slice(11, 23)}
         </time>
-        <span className="nlv-badge">{entry.level}</span>
-        <span className="nlv-msg">{entry.message}</span>
+        {http ? (
+          <>
+            <span className="nlv-http-method" data-method={http.method}>{http.method}</span>
+            <span className="nlv-http-url">{http.url}</span>
+            <span className="nlv-http-status" data-status={statusClass(http)}>
+              {http.error ? 'ERR' : http.status}
+            </span>
+            <span className="nlv-http-dur">{http.durationMs}ms</span>
+          </>
+        ) : (
+          <>
+            <span className="nlv-badge">{entry.level}</span>
+            <span className="nlv-msg">{entry.message}</span>
+          </>
+        )}
         {hasDetail && <span className="nlv-chev" aria-hidden>{open ? '▾' : '▸'}</span>}
       </button>
-      {open && hasDetail && <pre className="nlv-detail">{detail}</pre>}
+      {open && hasDetail && (
+        http
+          ? <HttpDetail http={http} />
+          : <pre className="nlv-detail">{detail}</pre>
+      )}
     </li>
+  )
+}
+
+function statusClass(http: HttpCapture): string {
+  if (http.error) return 'err'
+  const s = http.status ?? 0
+  if (s >= 500) return 'server'
+  if (s >= 400) return 'client'
+  if (s >= 300) return 'redirect'
+  return 'ok'
+}
+
+function formatHeaders(headers: Record<string, string>): string {
+  const lines = Object.entries(headers).map(([k, v]) => `${k}: ${v}`)
+  return lines.length ? lines.join('\n') : '(no headers)'
+}
+
+function formatBody(body: unknown): string {
+  return typeof body === 'string' ? body : JSON.stringify(body, null, 2)
+}
+
+function HttpSection({ title, headers, body }: { title: string; headers: Record<string, string>; body?: unknown }) {
+  return (
+    <div className="nlv-http-section">
+      <div className="nlv-http-h">{title}</div>
+      <pre className="nlv-detail">
+        {formatHeaders(headers)}
+        {body !== undefined ? `\n\n${formatBody(body)}` : ''}
+      </pre>
+    </div>
+  )
+}
+
+function HttpDetail({ http }: { http: HttpCapture }) {
+  return (
+    <div className="nlv-http-detail">
+      <HttpSection title="Request" headers={http.request.headers} body={http.request.body} />
+      {http.error ? (
+        <div className="nlv-http-section">
+          <div className="nlv-http-h">Error</div>
+          <pre className="nlv-detail">{http.error.name}: {http.error.message}</pre>
+        </div>
+      ) : http.response ? (
+        <HttpSection title="Response" headers={http.response.headers} body={http.response.body} />
+      ) : null}
+      {http.truncated && <div className="nlv-http-trunc">⚠️ body truncated</div>}
+    </div>
   )
 }
 
@@ -267,4 +334,17 @@ const STYLES = `
 .nlv-card-sub{ margin:0 0 6px; color:var(--nlv-muted); font-size:11.5px; line-height:1.5; }
 .nlv-card-input{ width:100%; text-align:center; letter-spacing:.15em; }
 .nlv-error{ margin:2px 0 0; color:#ff7b72; font-size:11.5px; }
+
+.nlv-http-method{ flex:0 0 auto; min-width:48px; text-align:center; font-weight:700; font-size:10px; letter-spacing:.05em; color:#79c0ff; }
+.nlv-http-url{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nlv-http-status{ flex:0 0 auto; min-width:40px; text-align:right; font-variant-numeric:tabular-nums; }
+.nlv-http-status[data-status="ok"]{ color:var(--nlv-accent); }
+.nlv-http-status[data-status="redirect"]{ color:#58a6ff; }
+.nlv-http-status[data-status="client"]{ color:#e3b341; }
+.nlv-http-status[data-status="server"],.nlv-http-status[data-status="err"]{ color:#ff7b72; }
+.nlv-http-dur{ flex:0 0 auto; color:var(--nlv-faint); font-variant-numeric:tabular-nums; }
+.nlv-http-detail{ border-top:1px solid var(--nlv-border); }
+.nlv-http-section .nlv-http-h{ padding:6px 12px 0 46px; color:var(--nlv-muted); font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
+.nlv-http-section .nlv-detail{ border-top:0; }
+.nlv-http-trunc{ padding:4px 12px 8px 46px; color:#e3b341; font-size:11px; }
 `

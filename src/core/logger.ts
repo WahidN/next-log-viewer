@@ -1,11 +1,13 @@
-import type { Level, LogStore } from './types'
-import { buildEntry } from './log-entry'
+import type { HttpCapture, Level, LogEntry, LogStore } from './types'
+import { buildEntry, makeId } from './log-entry'
+import { deriveHttpLevel, httpMessage } from './http-entry'
 
 export interface Logger {
   debug(message: string, data?: unknown): void
   info(message: string, data?: unknown): void
   warn(message: string, data?: unknown): void
   error(message: string, data?: unknown): void
+  http(capture: HttpCapture): void
 }
 
 export interface CreateLoggerOptions {
@@ -26,8 +28,7 @@ export function createLogger(store: LogStore, options: CreateLoggerOptions = {})
     }
   }
 
-  function record(level: Level, message: string, data?: unknown) {
-    const entry = buildEntry({ level, message, data, ts: now(), seq: seq++ })
+  function commit(entry: LogEntry, consoleArgs: unknown[]) {
     try {
       const result = store.append(entry)
       if (result instanceof Promise) result.catch(() => warnOnce())
@@ -35,11 +36,27 @@ export function createLogger(store: LogStore, options: CreateLoggerOptions = {})
       warnOnce()
     }
     if (passthrough) {
-      const fn = (console as unknown as Record<string, unknown>)[level]
+      const fn = (console as unknown as Record<string, unknown>)[entry.level]
       const out = typeof fn === 'function' ? (fn as (...a: unknown[]) => void) : console.log
-      if (data === undefined) out(message)
-      else out(message, data)
+      out(...consoleArgs)
     }
+  }
+
+  function record(level: Level, message: string, data?: unknown) {
+    const entry = buildEntry({ level, message, data, ts: now(), seq: seq++ })
+    commit(entry, data === undefined ? [message] : [message, data])
+  }
+
+  function http(capture: HttpCapture) {
+    const ts = now()
+    const entry: LogEntry = {
+      id: makeId(ts, seq++),
+      ts,
+      level: deriveHttpLevel(capture),
+      message: httpMessage(capture),
+      http: capture,
+    }
+    commit(entry, [entry.message])
   }
 
   return {
@@ -47,5 +64,6 @@ export function createLogger(store: LogStore, options: CreateLoggerOptions = {})
     info: (m, d) => record('info', m, d),
     warn: (m, d) => record('warn', m, d),
     error: (m, d) => record('error', m, d),
+    http,
   }
 }

@@ -20,7 +20,7 @@ export function applyQuery(entries: LogEntry[], opts: QueryOpts = {}): QueryResu
     if (since && e.id <= since) return false
     if (level && !levelAtLeast(e.level, level)) return false
     if (needle) {
-      const hay = `${e.message} ${serialize(e.data)} ${serialize(e.error)}`.toLowerCase()
+      const hay = `${e.message} ${serialize(e.data)} ${serialize(e.error)} ${serialize(e.http)}`.toLowerCase()
       if (!hay.includes(needle)) return false
     }
     return true

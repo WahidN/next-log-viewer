@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 
-export function GenerateButton() {
+// A small client button that pings a server endpoint. Reused for both demos
+// (explicit logging and outbound-fetch capture) so the two stay in sync.
+export function DemoButton({ endpoint, idleLabel }: { endpoint: string; idleLabel: string }) {
   const [count, setCount] = useState(0)
   const [busy, setBusy] = useState(false)
 
@@ -11,7 +13,7 @@ export function GenerateButton() {
       onClick={async () => {
         setBusy(true)
         try {
-          await fetch('/api/demo')
+          await fetch(endpoint)
           setCount((c) => c + 1)
         } finally {
           setBusy(false)
@@ -27,7 +29,7 @@ export function GenerateButton() {
         cursor: busy ? 'default' : 'pointer',
       }}
     >
-      {busy ? 'Generating…' : `Generate server logs${count ? ` (${count}×)` : ''}`}
+      {busy ? 'Running…' : `${idleLabel}${count ? ` (${count}×)` : ''}`}
     </button>
   )
 }

@@ -110,6 +110,38 @@ again) so every call lands in the one store the viewer polls.
 > logging, log from a route handler or Server Action, or make the segment dynamic with
 > `export const dynamic = 'force-dynamic'`.
 
+### Capturing outbound fetch (a network tab for the server)
+
+Server-side `fetch` calls never show up in the browser Network tab. Wrap `fetch` with
+`createLoggedFetch` to record each request/response pair as an entry the viewer renders as a
+Network-style row (method · URL · status · duration, expandable to headers + bodies).
+
+```ts
+// lib/log-viewer.ts
+import { createLogViewer, createLoggedFetch, memoryStore } from '@wahidn/next-log-viewer/server'
+
+export const { log, handlers, config } = createLogViewer({ store: memoryStore(), secret: process.env.LOG_VIEWER_SECRET })
+
+export const loggedFetch = createLoggedFetch(log, {
+  // all optional — these are the defaults
+  redactHeaders: ['authorization', 'cookie', 'set-cookie', 'x-api-key'],
+  maxBodyBytes: 32_768,
+  // redactBody: (body, ctx) => body,  // mask fields like password
+})
+```
+
+```ts
+// in a Server Action or route handler — drop-in replacement for fetch
+import { loggedFetch } from '@/lib/log-viewer'
+
+const res = await loggedFetch(`${process.env.API_URL}/users`, { method: 'POST', body })
+```
+
+Sensitive headers are redacted and large bodies truncated **before** anything is stored.
+The wrapper returns the real response unread, so your code keeps working unchanged; capture
+happens in the background and never throws into your call. Network failures are recorded
+(with the error) and re-thrown as usual.
+
 ## Notes
 
 - Serverless (Vercel): the bundled `memoryStore`/`fileStore` are per-instance and

@@ -26,8 +26,16 @@ Then:
 - `app/api/logs/[[...path]]/route.ts` — mounts the viewer's GET/POST handlers.
 - `app/logs/page.tsx` — renders `<LogViewer basePath="/api/logs" />`.
 
-The "app under test" is `app/api/demo/route.ts`, which emits info/debug/warn/error logs
-(including an Error with a stack trace) on each request.
+The "apps under test" are two route handlers:
+
+- `app/api/demo/route.ts` — emits info/debug/warn/error logs (including an Error with a stack
+  trace) on each request.
+- `app/api/fetch-demo/route.ts` — uses `loggedFetch` (from `createLoggedFetch`) to make outbound
+  server-side calls. Each request/response pair is captured and rendered in the viewer as a
+  **network row** (method · URL · status · duration, expandable to headers + bodies) — a network
+  tab for the server calls the browser never shows. Sensitive headers and a `password` field are
+  redacted before storage. (Requires network access to `jsonplaceholder.typicode.com`; if it's
+  unreachable, the failed call is still captured as an error row.)
 
 > Note: the example imports the package's built output (`dist/`). If you change the
 > package source, rebuild it (`pnpm --filter next-log-viewer build`).
