@@ -1,6 +1,6 @@
 {
   "name": "@wahidn/next-log-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A drop-in log viewer for Next.js server-side logs. Log through an explicit API; view them live in a protected in-app route.",
   "keywords": ["nextjs", "logging", "logger", "log-viewer", "react", "server"],
   "license": "MIT",
