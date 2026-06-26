@@ -101,11 +101,17 @@ export function createLoggedFetch(log: Logger, options: LoggedFetchOptions = {})
     try {
       res = await fetch(req)
     } catch (err) {
-      void record(reqClone, undefined, Date.now() - start, normalizeError(err))
+      // Await so the error entry is recorded before we hand control back: a
+      // serverless/edge runtime may stop processing pending work the moment the
+      // caller's request settles, which would otherwise drop the capture.
+      await record(reqClone, undefined, Date.now() - start, normalizeError(err))
       throw err
     }
     const resClone = res.clone()
-    void record(reqClone, resClone, Date.now() - start, undefined)
+    // durationMs is sampled above (time-to-response); awaiting record() only
+    // delays the caller by the body-read it would do next anyway, and guarantees
+    // the entry exists before this resolves. record() never throws (see below).
+    await record(reqClone, resClone, Date.now() - start, undefined)
     return res
   }
 }
