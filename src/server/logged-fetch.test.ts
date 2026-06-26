@@ -12,6 +12,33 @@ function fakeLogger(captured: HttpCapture[]): Logger {
   return { debug: noop, info: noop, warn: noop, error: noop, http: (c) => { captured.push(c) } }
 }
 
+test('the capture is recorded before loggedFetch resolves (so it is not lost when the runtime stops after the response)', async () => {
+  // The response body only arrives on a later macrotask. A fire-and-forget
+  // capture would still be mid-read when loggedFetch resolves — exactly what a
+  // serverless/edge runtime drops once the handler returns. Awaiting the capture
+  // guarantees the entry exists by the time the caller continues.
+  const deferredBody = new ReadableStream<Uint8Array>({
+    start(controller) {
+      setTimeout(() => {
+        controller.enqueue(new TextEncoder().encode(JSON.stringify({ ok: true })))
+        controller.close()
+      }, 0)
+    },
+  })
+  vi.stubGlobal('fetch', vi.fn(async () =>
+    new Response(deferredBody, { status: 200, headers: { 'content-type': 'application/json' } })))
+  const captured: HttpCapture[] = []
+  const f = createLoggedFetch(fakeLogger(captured))
+  await f('https://api.test/users', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'a' }),
+  })
+  // No flush(): the entry MUST already be present the instant the call resolves.
+  expect(captured).toHaveLength(1)
+  expect(captured[0].method).toBe('POST')
+})
+
 test('records request/response and leaves the caller response readable; redacts headers', async () => {
   vi.stubGlobal('fetch', vi.fn(async () =>
     new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } })))
@@ -31,6 +58,32 @@ test('records request/response and leaves the caller response readable; redacts 
   expect(c.request.body).toEqual({ name: 'a' })
   expect(c.response?.body).toEqual({ ok: true })
   expect(c.request.headers.authorization).toBe('[redacted]')
+})
+
+test('an error capture is recorded before the error is rethrown (not lost after the runtime stops)', async () => {
+  // Slow request body: a fire-and-forget capture would still be reading it when
+  // the error rethrows. Awaiting guarantees the error entry exists first.
+  const deferredReqBody = new ReadableStream<Uint8Array>({
+    start(controller) {
+      setTimeout(() => {
+        controller.enqueue(new TextEncoder().encode('{"a":1}'))
+        controller.close()
+      }, 0)
+    },
+  })
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed') }))
+  const captured: HttpCapture[] = []
+  const f = createLoggedFetch(fakeLogger(captured))
+  const init: RequestInit & { duplex: 'half' } = {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: deferredReqBody,
+    duplex: 'half',
+  }
+  await expect(f('https://api.test/down', init)).rejects.toThrow('fetch failed')
+  // No flush(): the error entry must already be recorded the instant we rethrow.
+  expect(captured).toHaveLength(1)
+  expect(captured[0].error).toMatchObject({ name: 'TypeError', message: 'fetch failed' })
 })
 
 test('records an error entry and rethrows on network failure', async () => {

@@ -146,9 +146,13 @@ const res = await loggedFetch(`${process.env.API_URL}/users`, { method: 'POST', 
 ```
 
 Sensitive headers are redacted and large bodies truncated **before** anything is stored.
-The wrapper returns the real response unread, so your code keeps working unchanged; capture
-happens in the background and never throws into your call. Network failures are recorded
-(with the error) and re-thrown as usual.
+The wrapper returns the real response unread, so your code keeps working unchanged, and
+capture can never throw into your call. The entry is recorded **before** the call resolves —
+not fire-and-forget — so captures aren't lost on serverless/edge runtimes that stop running
+once the response is returned (this is why outbound POSTs could previously go missing). The
+only cost is that `loggedFetch` resolves after the response body it would read next anyway;
+streaming responses (SSE) are detected and left unread. Network failures are recorded (with
+the error) and re-thrown as usual.
 
 ## Notes
 
