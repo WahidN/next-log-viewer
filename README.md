@@ -73,6 +73,14 @@ Logs still print to your terminal as usual.
 The viewer probes its session once on load and only starts polling **after** you unlock it,
 so an unauthenticated page never spams the API with `401`s — it just shows the unlock form.
 
+### Disabling in production
+
+`enabledInProduction` (default `false`) is the master switch in production. When it is off
+**and** `NODE_ENV === 'production'`, the viewer route returns `404` **and** `log` becomes a
+no-op: nothing is appended to the store, no log file is written, and nothing prints to the
+console. Set `enabledInProduction: true` to keep logging (and the viewer) on in production.
+In development everything logs regardless of this flag.
+
 ### Where you can log
 
 `log` is a plain server-side function: it appends to the store and prints to your terminal.

@@ -11,19 +11,30 @@ export interface FileStoreOptions {
 export function fileStore(options: FileStoreOptions): LogStore {
   const { path } = options
   const maxBytes = options.maxBytes ?? 50_000_000
-  mkdirSync(dirname(path), { recursive: true })
-  let size = existsSync(path) ? statSync(path).size : 0
+  // Defer creating the directory until the first append, so a store that is
+  // never written to (e.g. a disabled-in-production logger) leaves nothing on
+  // disk. `size` stays undefined until then.
+  let size: number | undefined
+
+  function ensureReady(): number {
+    if (size === undefined) {
+      mkdirSync(dirname(path), { recursive: true })
+      size = existsSync(path) ? statSync(path).size : 0
+    }
+    return size
+  }
 
   return {
     append(entry: LogEntry) {
+      let current = ensureReady()
       const line = `${JSON.stringify(entry)}\n`
       const bytes = Buffer.byteLength(line)
-      if (size > 0 && size + bytes > maxBytes) {
+      if (current > 0 && current + bytes > maxBytes) {
         renameSync(path, `${path}.1`)
-        size = 0
+        current = 0
       }
       appendFileSync(path, line)
-      size += bytes
+      size = current + bytes
     },
     query(opts: QueryOpts) {
       if (!existsSync(path)) return { entries: [], cursor: opts.since ?? '' }
