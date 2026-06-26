@@ -1,5 +1,5 @@
-import type { LogStore, ViewerConfig } from '../core/types'
 import { createLogger, type Logger } from '../core/logger'
+import type { LogStore, ViewerConfig } from '../core/types'
 import { createHandlers, type Handlers } from './handlers'
 
 export const DEFAULT_PATH = '/logs'
@@ -25,12 +25,21 @@ export interface LogViewerInstance {
   config: ViewerConfig
 }
 
+/** A logger that drops everything — no store append (no files), no console. */
+function noopLogger(): Logger {
+  const noop = () => {}
+  return { debug: noop, info: noop, warn: noop, error: noop, http: noop }
+}
+
 export function createLogViewer(opts: CreateLogViewerOptions): LogViewerInstance {
-  const log = createLogger(opts.store)
+  const enabledInProduction = opts.enabledInProduction ?? false
+ 
+  const disabled = process.env.NODE_ENV === 'production' && !enabledInProduction
+  const log = disabled ? noopLogger() : createLogger(opts.store)
   const handlers = createHandlers({
     store: opts.store,
     secret: opts.secret,
-    enabledInProduction: opts.enabledInProduction,
+    enabledInProduction,
   })
   const config: ViewerConfig = {
     path: opts.path ?? DEFAULT_PATH,

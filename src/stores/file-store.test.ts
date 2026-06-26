@@ -33,3 +33,18 @@ test('query on a missing file returns empty', () => {
   expect(r.entries).toEqual([])
   expect(r.cursor).toBe('x')
 })
+
+test('constructing a store creates no directory or file (lazy until first write)', () => {
+  const path = join(dir, 'nested', 'app.jsonl')
+  fileStore({ path })
+  expect(existsSync(join(dir, 'nested'))).toBe(false)
+  expect(existsSync(path)).toBe(false)
+})
+
+test('the directory and file are created on first append', () => {
+  const path = join(dir, 'nested', 'app.jsonl')
+  const s = fileStore({ path })
+  expect(existsSync(path)).toBe(false)
+  s.append(E('1'))
+  expect(existsSync(path)).toBe(true)
+})
